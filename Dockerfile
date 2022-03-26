@@ -11,9 +11,9 @@ RUN /go/bin/bombardier --help
 FROM python:3.10-alpine as builder
 RUN apk update && apk add --update git gcc libc-dev libffi-dev
 WORKDIR mhddos_proxy
-COPY ./requirements.txt ./
+COPY ./requirements.txt .
 RUN pip3 install --target=/mhddos_proxy/dependencies -r requirements.txt
-COPY ./ ./
+COPY . .
 
 FROM python:3.10-alpine
 WORKDIR mhddos_proxy
