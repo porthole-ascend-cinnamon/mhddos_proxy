@@ -4,6 +4,7 @@ import queue
 from collections import namedtuple
 from concurrent.futures import Future
 from concurrent.futures.thread import _WorkItem
+from sys import platform
 from threading import Thread, Event
 from time import sleep, time
 
@@ -110,6 +111,28 @@ def run_ddos(thread_pool, targets, total_threads, period, rpc, http_methods, vpn
     event.clear()
 
 
+def check_fix_ulimits():
+    if platform == 'linux':
+        # Available on linux only
+        import resource
+
+        try:
+            ulimit_threshold = 1048576
+            ulimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+            logger.info(f'{cl.BLUE}Перевіряємо ліміти кількості відкритих файлів, (soft, hard)={ulimit}{cl.RESET}')
+
+            if ulimit < (ulimit_threshold, ulimit_threshold):
+                logger.warning(f'{cl.YELLOW}Ліміти замалі, пробуємо встановити вищі, (soft, hard)='
+                               f'{(ulimit_threshold, ulimit_threshold)}{cl.RESET}')
+                resource.setrlimit(resource.RLIMIT_NOFILE, (ulimit_threshold, ulimit_threshold))
+                logger.info(f'{cl.BLUE}Встановлені нові ліміти кількості відкритих файлів, (soft, hard)='
+                            f'{resource.getrlimit(resource.RLIMIT_NOFILE)}{cl.RESET}')
+        except Exception as ex:
+            logger.error(f'{cl.RED}Щось пішло не так: "{ex}"{cl.RESET}')
+            logger.error(f'{cl.RED}Скоріше за все скрипт запущено не через sudo{cl.RESET}')
+            logger.error(f'{cl.RED}Підніміть ліміти в цій консолі командою "ulimit -n 1048576"{cl.RESET}')
+
+
 def start(total_threads, period, targets_iter, rpc, proxy_timeout, http_methods, vpn_mode, debug, table):
     if table:
         debug = False
@@ -140,6 +163,8 @@ def start(total_threads, period, targets_iter, rpc, proxy_timeout, http_methods,
 
 
 if __name__ == '__main__':
+    check_fix_ulimits()
+
     args = init_argparse().parse_args()
     print_banner(args.vpn_mode)
     start(
