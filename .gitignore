@@ -1,5 +1,19 @@
-*.py[cod]
+# Editors
 .idea/
-.venv/
-*.egg-info
+
+# Local files
 files/proxies.txt
+
+# Environment folders
+.venv/
+venv/
+env/
+
+# ENV files
+.env
+
+# Python files
+__pycache__/
+*.py[cod]
+*.egg-info
+
