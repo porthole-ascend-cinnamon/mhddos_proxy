@@ -5,6 +5,7 @@ import queue
 from collections import namedtuple
 from concurrent.futures import Future, Executor
 from concurrent.futures.thread import _WorkItem
+from random import seed
 from threading import Thread, Event
 from time import sleep, time
 
@@ -129,6 +130,8 @@ def run_ddos(thread_pool, proxies, targets, total_threads, period, rpc, http_met
 def start(args):
     print_banner(args.vpn_mode)
     fix_ulimits()
+    
+    seed(time())
 
     if args.table:
         args.debug = False
