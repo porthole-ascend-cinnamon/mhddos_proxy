@@ -66,11 +66,17 @@
 
     docker run -it --rm --pull always ghcr.io/porthole-ascend-cinnamon/mhddos_proxy --table https://ria.ru https://tass.ru
 
+### 📌Автоматичний шукач нових проксі для mhddos_proxy
+Сам скрипт та інструкції по встановленню тут: https://github.com/porthole-ascend-cinnamon/proxy_finder
+
 ### 🐳 Комьюніті
-- [Детальний розбір MHDDoS_proxy](https://github.com/SlavaUkraineSince1991/DDoS-for-all/blob/main/MHDDoS_proxy.md)
+- [1. Детальний розбір mhddos_proxy та інструкції по встановленню](docs/installation.md)
+- [2. Детальний розбір MHDDoS_proxy](https://github.com/SlavaUkraineSince1991/DDoS-for-all/blob/main/MHDDoS_proxy.md)
 - [Utility for converting shared targets into config format](https://github.com/kobzar-darmogray/mhddos_proxy_utils)
 - [Аналіз засобу mhddos_proxy](https://telegra.ph/Anal%D1%96z-zasobu-mhddos-proxy-04-01)
 - [Приклад запуску через docker на OpenWRT](https://youtu.be/MlL6fuDcWlI)
+- [Створення ботнету з 30+ безкоштовних та автономних(працюють навіть при вимкненому ПК) Linux-серверів](https://auto-ddos.notion.site/dd91326ed30140208383ffedd0f13e5c)
+- [VPN](https://auto-ddos.notion.site/VPN-5e45e0aadccc449e83fea45d56385b54)
 
 ### CLI
 
