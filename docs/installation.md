@@ -10,7 +10,7 @@ https://telegra.ph/mhddos-proxy-install-on-Linux-with-terminal-03-31
 
 https://telegra.ph/Vstanovlennya-mhddos-proxy-napryamu-na-vash-Mac-04-03
 
-### Termux
+### Android
 
 https://telegra.ph/mhddos-proxy-for-Android-with-Termux-03-31  
 
