@@ -36,4 +36,5 @@ docker run -it --rm --pull always --name alexnestua ghcr.io/alexnest-ua/auto_mhd
 ```
 Більш детально про параметри читайте тут: https://github.com/alexnest-ua/auto_mhddos_alexnest/tree/docker  
 
+### Додаткові потужності
 - [**Створення ботнету з 30+ безкоштовних та автономних(працюють навіть при вимкненому ПК) Linux-серверів**](https://auto-ddos.notion.site/dd91326ed30140208383ffedd0f13e5c)
