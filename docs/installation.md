@@ -35,3 +35,5 @@ Docker-image, який запускає одночасно mhddos_proxy та [pr
 docker run -it --rm --pull always --name alexnestua ghcr.io/alexnest-ua/auto_mhddos_alexnest:latest 1 1500 1000 --debug
 ```
 Більш детально про параметри читайте тут: https://github.com/alexnest-ua/auto_mhddos_alexnest/tree/docker  
+
+- [**Створення ботнету з 30+ безкоштовних та автономних(працюють навіть при вимкненому ПК) Linux-серверів**](https://auto-ddos.notion.site/dd91326ed30140208383ffedd0f13e5c)
