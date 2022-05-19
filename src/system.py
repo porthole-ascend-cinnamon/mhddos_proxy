@@ -55,7 +55,7 @@ async def fetch(url: str) -> Optional[str]:
 
 
 async def is_latest_version() -> bool:
-    latest = int((await fetch(VERSION_URL)).strip())
+    latest = int((await fetch(VERSION_URL)).strip())// FIXME: There are a problem: AttributeError: 'NoneType' object has no attribute 'strip'
     current = int((await read_or_fetch('version.txt')).strip())
     return current >= latest
 
