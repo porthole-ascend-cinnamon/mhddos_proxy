@@ -5,6 +5,8 @@
 - Безліч різноманітних DDoS методів
 - Ефективне використання ресурсів завдяки асихронній архітектурі
 
+See the english version [here](./docs/english.md)!
+
 ### ⏱ Останні оновлення
   
 Оновлення версії для Windows | Mac | Linux | Android | Docker: https://telegra.ph/Onovlennya-mhddos-proxy-04-16  
