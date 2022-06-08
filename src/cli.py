@@ -72,6 +72,12 @@ def init_argparse() -> argparse.ArgumentParser:
         choices=LANGUAGES,
         help='Select language (default is ua)'
     )
+    parser.add_argument(
+        '--timer',
+        type=int,
+        default=-1,
+        help='For how many seconds program will work'
+    )
 
     # Advanced
     parser.add_argument(
