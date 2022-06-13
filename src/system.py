@@ -142,3 +142,14 @@ def setup_event_loop() -> asyncio.AbstractEventLoop:
     loop.set_exception_handler(_handle_uncaught_exception)
     asyncio.set_event_loop(loop)
     return loop
+
+
+def terminate_loop(loop):
+    tasks = asyncio.all_tasks(loop)
+    for t in tasks:
+        if not t.cancelled():
+            t.cancel()
+    loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+    loop.shutdown_default_executor()
+    if loop.is_running():
+        loop.close()

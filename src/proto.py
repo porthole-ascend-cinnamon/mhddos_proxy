@@ -203,7 +203,7 @@ class FloodIO(asyncio.Protocol):
             else:
                 raise ValueError(f"Unknown flood opcode {op}")
         except StopIteration:
-            self._transport.close()
+            self._transport.abort()
             self._transport = None
 
     def _handle_cancellation(self, on_close):
