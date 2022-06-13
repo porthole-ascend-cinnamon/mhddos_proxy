@@ -368,8 +368,7 @@ IS_AUTO_MH = os.getenv('AUTO_MH')
 IS_DOCKER = os.getenv('IS_DOCKER')
 
 
-def _main_signal_handler(ps, logger, shutdown, *args):
-    shutdown.set()
+def _main_signal_handler(ps, logger, *args):
     if not IS_AUTO_MH:
         logger.info(f"{cl.BLUE}{t('Shutting down...')}{cl.RESET}")
     for p in ps:
@@ -379,26 +378,13 @@ def _main_signal_handler(ps, logger, shutdown, *args):
         sys.exit()
 
 
-# XXX: there might be the case we don't need this waiter at all
-def _wait_shutdown(shutdown, loop):
-    while not shutdown.wait(0.5):
-        pass
-    loop.call_soon_threadsafe(partial(terminate_loop, loop))
-
-
-def _worker_process(
-    args,
-    lang: str,
-    process_index: Optional[Tuple[int, int]],
-    shutdown: mp.Event
-):
+def _worker_process(args, lang: str, process_index: Optional[Tuple[int, int]]):
     try:
         if IS_DOCKER:
             random.seed(int(time.time() // 100))
         set_language(lang)  # set language again for the subprocess
         setup_worker_logger(process_index)
         loop = setup_event_loop()
-        Thread(target=_wait_shutdown, args=(shutdown, loop,)).start()
         loop.run_until_complete(run_ddos(args))
     except KeyboardInterrupt:
         terminate_loop(loop)
@@ -443,14 +429,13 @@ def main():
 
     processes = []
     mp.set_start_method("spawn")
-    shutdown = mp.Event()
     for ind in range(num_copies):
         pos = (ind + 1, num_copies) if num_copies > 1 else None
-        p = mp.Process(target=_worker_process, args=(args, lang, pos, shutdown), daemon=True)
+        p = mp.Process(target=_worker_process, args=(args, lang, pos), daemon=True)
         processes.append(p)
 
-    signal.signal(signal.SIGINT, partial(_main_signal_handler, processes, logger, shutdown))
-    signal.signal(signal.SIGTERM, partial(_main_signal_handler, processes, logger, shutdown))
+    signal.signal(signal.SIGINT, partial(_main_signal_handler, processes, logger))
+    signal.signal(signal.SIGTERM, partial(_main_signal_handler, processes, logger))
 
     for p in processes:
         p.start()
