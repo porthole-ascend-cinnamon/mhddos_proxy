@@ -144,6 +144,7 @@ def setup_event_loop() -> asyncio.AbstractEventLoop:
     return loop
 
 
+# XXX: what would be the best way to set timeout for this operation?
 def terminate_loop(loop):
     tasks = asyncio.all_tasks(loop)
     for t in tasks:
