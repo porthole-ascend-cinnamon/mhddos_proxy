@@ -1,12 +1,14 @@
 import asyncio
+from asyncio import events
+from contextlib import suppress
 import json
 import os.path
 import selectors
 import socket
 import sys
-from asyncio import events
-from contextlib import suppress
-from typing import Optional
+import time
+from threading import Thread
+from typing import Callable, Optional
 
 import requests
 
@@ -144,13 +146,20 @@ def setup_event_loop() -> asyncio.AbstractEventLoop:
     return loop
 
 
-# XXX: what would be the best way to set timeout for this operation?
-def terminate_loop(loop):
-    tasks = asyncio.all_tasks(loop)
-    for t in tasks:
-        if not t.cancelled():
-            t.cancel()
-    loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-    loop.shutdown_default_executor()
-    if loop.is_running():
-        loop.close()
+def terminate_loop(loop: asyncio.AbstractEventLoop) -> None:
+    with suppress(Exception):
+        tasks = asyncio.all_tasks(loop)
+        for t in tasks:
+            if not t.cancelled():
+                t.cancel()
+        loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+        loop.shutdown_default_executor()
+        if loop.is_running():
+            loop.close()
+
+
+def exec_after(timeout_seconds: float, f: Callable[[], None]) -> None:
+    def _inner():
+        time.sleep(timeout_seconds)
+        f()
+    Thread(target=_inner, daemon=True).start()

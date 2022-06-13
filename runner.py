@@ -17,13 +17,17 @@ from src.cli import init_argparse
 from src.core import (
     cl, COPIES_AUTO, CPU_COUNT, CPU_PER_COPY, DEFAULT_THREADS, logger, MAX_COPIES_AUTO, SCHEDULER_MAX_INIT_FRACTION,
     SCHEDULER_MIN_INIT_FRACTION, setup_worker_logger, UDP_FAILURE_BUDGET_FACTOR, UDP_FAILURE_DELAY_SECONDS,
-    USE_ONLY_MY_IP,
+    USE_ONLY_MY_IP, GRACEFUL_SHUTDOWN_SECONDS,
 )
 from src.i18n import DEFAULT_LANGUAGE, set_language, translate as t
 from src.mhddos import AsyncTcpFlood, AsyncUdpFlood, AttackSettings, main as mhddos_main
 from src.output import print_banner, print_status, show_statistic
 from src.proxies import ProxySet
-from src.system import fix_ulimits, load_configs, setup_event_loop, terminate_loop, WINDOWS_WAKEUP_SECONDS
+from src.system import (
+    fix_ulimits, load_configs,
+    setup_event_loop, terminate_loop, exec_after,
+    WINDOWS_WAKEUP_SECONDS,
+)
 from src.targets import Target, TargetsLoader
 
 
@@ -387,6 +391,7 @@ def _worker_process(args, lang: str, process_index: Optional[Tuple[int, int]]):
         loop = setup_event_loop()
         loop.run_until_complete(run_ddos(args))
     except KeyboardInterrupt:
+        exec_after(GRACEFUL_SHUTDOWN_SECONDS, sys.exit)
         terminate_loop(loop)
         sys.exit()
 
