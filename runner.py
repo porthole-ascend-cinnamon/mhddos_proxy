@@ -102,8 +102,6 @@ class GeminoCurseTaskSet:
             for task in self._pending:
                 if not task.cancelled():
                     task.cancel()
-            # XXX: check if I really need this
-            self._loop.run_until_complete(asyncio.gather(*self._pending))
             raise e
 
 
