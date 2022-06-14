@@ -106,6 +106,8 @@ class Runner:
             return self._loop.run_until_complete(task)
         except exceptions.CancelledError:
             pass
+        except KeyboardInterrupt:
+            pass
         finally:
             if (sigint_handler is not None
                 and signal.getsignal(signal.SIGINT) is sigint_handler
