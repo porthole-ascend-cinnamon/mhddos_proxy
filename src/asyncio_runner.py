@@ -61,7 +61,6 @@ class Runner:
             loop = self._loop
             _cancel_all_tasks(loop)
             loop.run_until_complete(loop.shutdown_asyncgens())
-            loop.run_until_complete(loop.shutdown_default_executor())
         finally:
             loop.close()
             self._loop = None
@@ -106,10 +105,7 @@ class Runner:
         try:
             return self._loop.run_until_complete(task)
         except exceptions.CancelledError:
-            if self._interrupt_count > 0 and task.uncancel() == 0:
-                raise KeyboardInterrupt()
-            else:
-                raise  # CancelledError
+            print("got cancel")
         finally:
             if (sigint_handler is not None
                 and signal.getsignal(signal.SIGINT) is sigint_handler
@@ -130,14 +126,18 @@ class Runner:
         self._context = contextvars.copy_context()
         self._state = _State.INITIALIZED
 
+    def is_interrupted(self) -> bool:
+        return self._interrupt_count > 0
+    
     def _on_sigint(self, signum, frame, main_task):
+        print("got keyboard inter")
         self._interrupt_count += 1
         if self._interrupt_count == 1 and not main_task.done():
             main_task.cancel()
             # wakeup loop if it is blocked by select() with long timeout
             self._loop.call_soon_threadsafe(lambda: None)
             return
-        raise KeyboardInterrupt()
+        # raise KeyboardInterrupt()
 
 
 def run(main, *, debug=None):
@@ -174,14 +174,10 @@ def _cancel_all_tasks(loop):
     for task in to_cancel:
         task.cancel()
 
-    loop.run_until_complete(tasks.gather(*to_cancel, return_exceptions=True))
-
-    for task in to_cancel:
-        if task.cancelled():
-            continue
-        if task.exception() is not None:
-            loop.call_exception_handler({
-                'message': 'unhandled exception during asyncio.run() shutdown',
-                'exception': task.exception(),
-                'task': task,
-            })
+    print("wait cancelling")
+    try:
+        loop.run_until_complete(tasks.gather(*to_cancel, return_exceptions=True))
+    except KeyboardInterrupt:
+        print("interrupted cancelling")
+    else:
+        print("done cancelling")
