@@ -119,7 +119,7 @@ def _handle_uncaught_exception(loop: asyncio.AbstractEventLoop, context) -> None
     logger.debug(f"Uncaught event loop exception: {error_message}")
 
 
-def setup_event_loop() -> asyncio.AbstractEventLoop:
+def new_event_loop() -> asyncio.AbstractEventLoop:
     uvloop = False
     try:
         __import__("uvloop").install()
@@ -142,24 +142,4 @@ def setup_event_loop() -> asyncio.AbstractEventLoop:
     else:
         loop = events.new_event_loop()
     loop.set_exception_handler(_handle_uncaught_exception)
-    asyncio.set_event_loop(loop)
     return loop
-
-
-def terminate_loop(loop: asyncio.AbstractEventLoop) -> None:
-    with suppress(Exception):
-        tasks = asyncio.all_tasks(loop)
-        for t in tasks:
-            if not t.cancelled():
-                t.cancel()
-        loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-        loop.shutdown_default_executor()
-        if loop.is_running():
-            loop.close()
-
-
-def exec_after(timeout_seconds: float, f: Callable[[], None]) -> None:
-    def _inner():
-        time.sleep(timeout_seconds)
-        f()
-    Thread(target=_inner, daemon=True).start()
