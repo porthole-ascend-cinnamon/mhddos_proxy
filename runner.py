@@ -367,23 +367,27 @@ IS_AUTO_MH = os.getenv('AUTO_MH')
 IS_DOCKER = os.getenv('IS_DOCKER')
 
 
-def _main_signal_handler(ps, logger, main_shutdown, worker_shutdown, *args):
+def _main_signal_handler(ps, logger, main_shutdown: Event, worker_shutdown: mp.Event, *args):
     if not IS_AUTO_MH:
         logger.info(f"{cl.BLUE}{t('Shutting down...')}{cl.RESET}")
     worker_shutdown.set()
     main_shutdown.set()
 
 
-def _worker_terminate(shutdown, runner) -> None:
+def _worker_terminate(shutdown: Event, runner: CoroutineRunner) -> None:
     def _stop():
-        print('raising')
         raise KeyboardInterrupt()
     shutdown.wait()
     if runner.get_loop().is_running() and not runner.is_interrupted():
         runner.get_loop().call_soon_threadsafe(_stop)
 
 
-def _worker_process(args, lang: str, process_index: Optional[Tuple[int, int]], shutdown):
+def _worker_process(
+    args,
+    lang: str,
+    process_index: Optional[Tuple[int, int]],
+    shutdown: mp.Event
+):
     if IS_DOCKER:
         random.seed(int(time.time() // 100))
     set_language(lang)  # set language again for the subprocess

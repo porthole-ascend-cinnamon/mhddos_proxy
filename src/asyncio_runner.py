@@ -51,7 +51,6 @@ class Runner:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        print("runner __exit__")
         self.close()
 
     def close(self):
@@ -106,7 +105,7 @@ class Runner:
         try:
             return self._loop.run_until_complete(task)
         except exceptions.CancelledError:
-            print("got cancel")
+            pass
         finally:
             if (sigint_handler is not None
                 and signal.getsignal(signal.SIGINT) is sigint_handler
@@ -131,10 +130,8 @@ class Runner:
         return self._interrupt_count > 0
     
     def _on_sigint(self, signum, frame, main_task):
-        print("got keyboard interrupt")
         self._interrupt_count += 1
         if self._interrupt_count == 1 and not main_task.done():
-            print("initialized cancel")
             main_task.cancel()
             # wakeup loop if it is blocked by select() with long timeout
             self._loop.call_soon_threadsafe(lambda: None)
@@ -176,10 +173,7 @@ def _cancel_all_tasks(loop):
     for task in to_cancel:
         task.cancel()
 
-    print("wait cancelling")
     try:
         loop.run_until_complete(tasks.gather(*to_cancel, return_exceptions=True))
     except KeyboardInterrupt:
-        print("interrupted cancelling")
-    else:
-        print("done cancelling")
+        pass
