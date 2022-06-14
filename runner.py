@@ -9,7 +9,7 @@ import random
 import signal
 import sys
 import time
-from threading import Thread
+from threading import Event, Thread
 from functools import partial
 from typing import List, Optional, Set, Tuple, Union
 
@@ -18,7 +18,7 @@ from src.cli import init_argparse
 from src.core import (
     cl, COPIES_AUTO, CPU_COUNT, CPU_PER_COPY, DEFAULT_THREADS, logger, MAX_COPIES_AUTO, SCHEDULER_MAX_INIT_FRACTION,
     SCHEDULER_MIN_INIT_FRACTION, setup_worker_logger, UDP_FAILURE_BUDGET_FACTOR, UDP_FAILURE_DELAY_SECONDS,
-    USE_ONLY_MY_IP,
+    USE_ONLY_MY_IP, GRACEFUL_SHUTDOWN_SECONDS,
 )
 from src.i18n import DEFAULT_LANGUAGE, set_language, translate as t
 from src.mhddos import AsyncTcpFlood, AsyncUdpFlood, AttackSettings, main as mhddos_main
@@ -367,17 +367,11 @@ IS_AUTO_MH = os.getenv('AUTO_MH')
 IS_DOCKER = os.getenv('IS_DOCKER')
 
 
-def _main_signal_handler(ps, logger, shutdown, *args):
+def _main_signal_handler(ps, logger, main_shutdown, worker_shutdown, *args):
     if not IS_AUTO_MH:
         logger.info(f"{cl.BLUE}{t('Shutting down...')}{cl.RESET}")
-    shutdown.set()
-    return
-    for p in ps:
-        if p.is_alive():
-            p.terminate()
-
-
-from threading import Thread
+    worker_shutdown.set()
+    main_shutdown.set()
 
 
 def _worker_terminate(shutdown, runner) -> None:
@@ -443,14 +437,25 @@ def main():
         p = mp.Process(target=_worker_process, args=(args, lang, pos, shutdown), daemon=True)
         processes.append(p)
 
-    signal.signal(signal.SIGINT, partial(_main_signal_handler, processes, logger, shutdown))
-    signal.signal(signal.SIGTERM, partial(_main_signal_handler, processes, logger, shutdown))
+    main_shutdown = Event()
+
+    signal.signal(
+        signal.SIGINT,
+        partial(_main_signal_handler, processes, logger, main_shutdown, shutdown)
+    )
+    signal.signal(
+        signal.SIGTERM,
+        partial(_main_signal_handler, processes, logger, main_shutdown, shutdown)
+    )
 
     for p in processes:
         p.start()
 
+    while not main_shutdown.wait(WINDOWS_WAKEUP_SECONDS):
+        pass
+
     for p in processes:
-        p.join()
+        p.join(GRACEFUL_SHUTDOWN_SECONDS)
 
 
 if __name__ == '__main__':

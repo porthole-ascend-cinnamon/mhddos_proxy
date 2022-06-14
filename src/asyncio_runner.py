@@ -51,6 +51,7 @@ class Runner:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        print("runner __exit__")
         self.close()
 
     def close(self):
@@ -130,14 +131,15 @@ class Runner:
         return self._interrupt_count > 0
     
     def _on_sigint(self, signum, frame, main_task):
-        print("got keyboard inter")
+        print("got keyboard interrupt")
         self._interrupt_count += 1
         if self._interrupt_count == 1 and not main_task.done():
+            print("initialized cancel")
             main_task.cancel()
             # wakeup loop if it is blocked by select() with long timeout
             self._loop.call_soon_threadsafe(lambda: None)
             return
-        # raise KeyboardInterrupt()
+        raise KeyboardInterrupt()
 
 
 def run(main, *, debug=None):
