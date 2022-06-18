@@ -37,6 +37,11 @@
 #### Python з автоматичним оновленням (якщо не працює - спробуйте `python` або `python3.10` замість `python3`)
 
     ./runner.sh python3 https://example.com tcp://198.18.0.123:5678
+    
+Для [**Termux for Android**](https://telegra.ph/mhddos-proxy-for-Android-with-Termux-03-31) ось так:
+```shell
+bash runner.sh python https://example.com tcp://198.18.0.123:5678 -t 1000
+```
 
 #### Python (потребує оновлення вручну) (якщо не працює - спробуйте `python` або `python3.10` замість `python3`)
 
