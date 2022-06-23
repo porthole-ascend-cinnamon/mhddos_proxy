@@ -31,7 +31,7 @@ from .vendor.useragents import USERAGENTS
 
 USERAGENTS = list(USERAGENTS)
 REFERERS = list(set(a.strip() for a in REFERERS))
-RAND_SLASH = "{{RANDSLASH}}"
+RAND_SLASH = "%7B%7BRANDSLASH%7D%7D"
 
 ctx: SSLContext = create_default_context()
 ctx.check_hostname = False
@@ -234,7 +234,7 @@ class AsyncTcpFlood(FloodBase):
     def add_rand_slash(self, path_qs) -> str:
         while RAND_SLASH in path_qs:
             path_qs = path_qs.replace(RAND_SLASH, "/"*random.randint(1, 1000), 1)
-        return parse.quote(path_qs)
+        return path_qs
 
     def build_request(self, path_qs=None, headers=None, body=None) -> bytes:
         path_qs = path_qs or self.default_path_qs
@@ -325,7 +325,7 @@ class AsyncTcpFlood(FloodBase):
     async def SLGET(self, on_connect=None) -> bool:
         def payload() -> bytes:
             return b''.join(self.build_request(
-                path_qs=self.add_rand_slash(self._url.path_qs)
+                path_qs=self.add_rand_slash(self.default_path_qs)
             ) for _ in range(self._settings.requests_per_buffer))
 
         return await self._generic_flood_proto(
