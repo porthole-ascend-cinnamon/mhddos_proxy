@@ -336,7 +336,6 @@ class AsyncTcpFlood(FloodBase):
 
     HEAD = GET
     RHEAD = RGET
-    SLHEAD = SLGET
 
     async def POST(self, on_connect=None) -> bool:
         def payload() -> bytes:
