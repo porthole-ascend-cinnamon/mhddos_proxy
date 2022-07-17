@@ -159,6 +159,22 @@ TRANSLATIONS = {
         'ua': "З'єднань",
         'es': 'Conexiones',
     },
+    'Config file': {
+        'ua': 'Файл конфігурації',
+        'es': 'Archivo de configuración'
+    },
+    'has been created successfully': {
+        'ua': 'створено успішно',
+        'es': 'se ha creado con éxito'
+    },
+    'It will override command-line default values': {
+        'ua': 'Цей файл перезапише значення за замовчуванням з командного рядка',
+        'es': 'Este archivo sobreescribirá los valores predeterminados de la línea de comandos'
+    },
+    'Now you may remove unnecessary options from it, and leave the config with some meaningful defaults': {
+        'ua': 'Тепер ви можете видалити непотрібні параметри і залишити конфіг з деяким значними замовчуваннями',
+        'es': 'Ahora puedes eliminar opciones innecesarias y dejar el archivo de configuración con algunos valores predeterminados significativos'
+    }
 }
 
 LANGUAGES = ['ua', 'en', 'es']

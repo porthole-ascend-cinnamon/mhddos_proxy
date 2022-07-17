@@ -1,7 +1,9 @@
+import sys
 import argparse
 
 from .core import COPIES_AUTO, DEFAULT_THREADS, Methods, SCHEDULER_FORK_SCALE, SCHEDULER_INITIAL_CAPACITY
-from .i18n import LANGUAGES
+from .i18n import LANGUAGES, translate as t
+from .app_config import read_config, save_config, CONFIG_DEFAULT_PATH
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -91,9 +93,27 @@ def init_argparse() -> argparse.ArgumentParser:
         default=SCHEDULER_FORK_SCALE,
         help='How many tasks to fork on successful connect to the target',
     )
+    parser.add_argument(
+        '--save-config',
+        action='store_true',
+        default=False,
+        required=False,
+        help=f'Save current configuration in `{CONFIG_DEFAULT_PATH}` config file'
+    )
 
     # Deprecated
     parser.add_argument('--table', action='store_true', help='[DEPRECATED]')
     parser.add_argument('--debug', action='store_true', help='[DEPRECATED]')
+
+    # Either save selected defaults config, or load it from file
+    new_config = vars(parser.parse_args())
+    if new_config['save_config']:
+        del new_config['save_config']
+        save_config(new_config)
+        print(f"{t('Config file')} `{CONFIG_DEFAULT_PATH}` {t('has been created successfully')}. {t('It will override command-line default values')}")
+        print(t('Now you may remove unnecessary options from it, and leave the config with some meaningful defaults'))
+        sys.exit(0)
+    elif len(defaults_config := read_config()):
+        parser.set_defaults(**defaults_config)
 
     return parser
